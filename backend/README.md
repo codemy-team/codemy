@@ -174,7 +174,7 @@ Headers:
 Body (minimum):
 
 ```json
-{ "courseId": "js-101", "title": "JavaScript Fundamentals" }
+{ "title": "JavaScript Fundamentals", "slug": "javascript-fundamentals" }
 ```
 
 Response:
@@ -284,3 +284,9 @@ docker run -p 8001:8000 amazon/dynamodb-local
 Then follow the same steps above.
 
 Note: no AWS account/keys are required when using DynamoDB Local.
+
+## Slug Behavior (Courses)
+
+- `slug` is optional on create; if not provided, it is generated from `title`
+- `slug` is normalized to lowercase with `-` separators
+- `slug` must be unique (409 "Slug already exists")

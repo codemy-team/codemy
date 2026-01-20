@@ -64,10 +64,18 @@ const run = async () => {
         {
             TableName: env.coursesTable,
             AttributeDefinitions: [
-                { AttributeName: "courseId", AttributeType: "S" }
+                { AttributeName: "courseId", AttributeType: "S" },
+                { AttributeName: "slug", AttributeType: "S" }
             ],
             KeySchema: [{ AttributeName: "courseId", KeyType: "HASH" }],
-            BillingMode: "PAY_PER_REQUEST"
+            BillingMode: "PAY_PER_REQUEST",
+            GlobalSecondaryIndexes: [
+                {
+                    IndexName: "slug-index",
+                    KeySchema: [{ AttributeName: "slug", KeyType: "HASH" }],
+                    Projection: { ProjectionType: "ALL" }
+                }
+            ]
         },
         {
             TableName: env.itemsTable,

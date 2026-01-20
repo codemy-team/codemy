@@ -19,11 +19,12 @@ router.use(requireRole("admin"));
 
 router.post("/admin/courses", async (req, res, next) => {
     try {
-        const { courseId, title } = req.body || {};
-        if (!courseId || !title) {
-            return next({ status: 400, message: "courseId and title are required" });
+        const { title } = req.body || {};
+        if (!title || typeof title !== "string" || !title.trim()) {
+            return next({ status: 400, message: "title is required" });
         }
-        const course = await createCourse(req.body);
+        const { courseId, ...payload } = req.body || {};
+        const course = await createCourse(payload);
         return res.status(201).json(course);
     } catch (error) {
         return next(error);
@@ -42,7 +43,7 @@ router.put("/admin/courses/:courseId", async (req, res, next) => {
 router.delete("/admin/courses/:courseId", async (req, res, next) => {
     try {
         await deleteCourse(req.params.courseId);
-        return res.status(204).send();
+        return res.status(200).json({ message: "Course deleted successfully" });
     } catch (error) {
         return next(error);
     }

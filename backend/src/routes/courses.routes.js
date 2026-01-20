@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
     getCourseById,
+    getCourseBySlug,
     listCourses
 } from "../services/courses.service.js";
 import { listCourseItems } from "../services/items.service.js";
@@ -25,6 +26,18 @@ router.get("/courses", async (req, res, next) => {
 router.get("/courses/:courseId", async (req, res, next) => {
     try {
         const course = await getCourseById(req.params.courseId);
+        if (!course) {
+            return next({ status: 404, message: "Course not found" });
+        }
+        return res.json(course);
+    } catch (error) {
+        return next(error);
+    }
+});
+
+router.get("/courses/slug/:slug", async (req, res, next) => {
+    try {
+        const course = await getCourseBySlug(req.params.slug);
         if (!course) {
             return next({ status: 404, message: "Course not found" });
         }
