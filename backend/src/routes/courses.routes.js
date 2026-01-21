@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
     getCourseById,
+    getCourseByIdentifier,
     getCourseBySlug,
     listCourses
 } from "../services/courses.service.js";
@@ -23,13 +24,29 @@ router.get("/courses", async (req, res, next) => {
     }
 });
 
-router.get("/courses/:courseId", async (req, res, next) => {
+router.get("/courses/by/:identifier", async (req, res, next) => {
     try {
-        const course = await getCourseById(req.params.courseId);
+        const course = await getCourseByIdentifier(req.params.identifier);
         if (!course) {
             return next({ status: 404, message: "Course not found" });
         }
         return res.json(course);
+    } catch (error) {
+        return next(error);
+    }
+});
+
+router.get("/courses/by/:identifier/resources", async (req, res, next) => {
+    try {
+        const course = await getCourseByIdentifier(req.params.identifier);
+        if (!course) {
+            return next({ status: 404, message: "Course not found" });
+        }
+        const items = await listCourseItems(course.courseId);
+        return res.json({
+            courseId: course.courseId,
+            items
+        });
     } catch (error) {
         return next(error);
     }
@@ -47,7 +64,35 @@ router.get("/courses/slug/:slug", async (req, res, next) => {
     }
 });
 
+router.get("/courses/:courseId", async (req, res, next) => {
+    try {
+        const course = await getCourseById(req.params.courseId);
+        if (!course) {
+            return next({ status: 404, message: "Course not found" });
+        }
+        return res.json(course);
+    } catch (error) {
+        return next(error);
+    }
+});
+
 router.get("/courses/:courseId/items", async (req, res, next) => {
+    try {
+        const course = await getCourseById(req.params.courseId);
+        if (!course) {
+            return next({ status: 404, message: "Course not found" });
+        }
+        const items = await listCourseItems(req.params.courseId);
+        return res.json({
+            courseId: req.params.courseId,
+            items
+        });
+    } catch (error) {
+        return next(error);
+    }
+});
+
+router.get("/courses/:courseId/resources", async (req, res, next) => {
     try {
         const course = await getCourseById(req.params.courseId);
         if (!course) {

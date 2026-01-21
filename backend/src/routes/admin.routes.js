@@ -2,20 +2,45 @@ import { Router } from "express";
 import { authenticate, requireRole } from "../middleware/auth.js";
 import {
     createCourse,
+    getCourseById,
+    listCourses,
     updateCourse,
-    deleteCourse
+    deleteCourseById
 } from "../services/courses.service.js";
 import {
     createCourseItem,
+    listCourseItemsAdmin,
+    reorderCourseItems,
     updateItemById,
-    deleteItemById
+    deleteCourseItem
 } from "../services/items.service.js";
 import { parsePositiveInt } from "../utils/pagination.js";
+import { buildFolder, signUpload } from "../config/cloudinary.js";
+import { env } from "../config/env.js";
 
 const router = Router();
 
 router.use(authenticate);
 router.use(requireRole("admin"));
+
+router.get("/admin/courses", async (req, res, next) => {
+    try {
+        const includeDeleted = req.query.includeDeleted === "true";
+        const search = typeof req.query.search === "string" ? req.query.search : "";
+        const page = parsePositiveInt(req.query.page, 1);
+        const pageSizeRaw = parsePositiveInt(req.query.pageSize, 6);
+        const pageSize = Math.min(Math.max(pageSizeRaw, 1), 50);
+        const result = await listCourses({
+            search,
+            page,
+            pageSize,
+            includeDeleted
+        });
+        return res.json(result);
+    } catch (error) {
+        return next(error);
+    }
+});
 
 router.post("/admin/courses", async (req, res, next) => {
     try {
@@ -42,7 +67,8 @@ router.put("/admin/courses/:courseId", async (req, res, next) => {
 
 router.delete("/admin/courses/:courseId", async (req, res, next) => {
     try {
-        await deleteCourse(req.params.courseId);
+        const hard = req.query.hard === "true";
+        await deleteCourseById(req.params.courseId, { hard });
         return res.status(200).json({ message: "Course deleted successfully" });
     } catch (error) {
         return next(error);
@@ -51,17 +77,21 @@ router.delete("/admin/courses/:courseId", async (req, res, next) => {
 
 router.post("/admin/courses/:courseId/items", async (req, res, next) => {
     try {
-        const { type, title, order } = req.body || {};
-        const orderValue = parsePositiveInt(order, 0);
-        if (!type || !title || !orderValue) {
+        const { type, title } = req.body || {};
+        const orderValue = parsePositiveInt(req.body?.order, 0);
+        if (!type || !title) {
             return next({
                 status: 400,
-                message: "type, title, and order are required"
+                message: "type and title are required"
             });
+        }
+        const course = await getCourseById(req.params.courseId);
+        if (!course) {
+            return next({ status: 404, message: "Course not found" });
         }
         const item = await createCourseItem(req.params.courseId, {
             ...req.body,
-            order: orderValue
+            order: orderValue || req.body?.order
         });
         return res.status(201).json(item);
     } catch (error) {
@@ -78,10 +108,70 @@ router.put("/admin/items/:itemId", async (req, res, next) => {
     }
 });
 
-router.delete("/admin/items/:itemId", async (req, res, next) => {
+router.post("/admin/uploads/sign", async (req, res, next) => {
     try {
-        await deleteItemById(req.params.itemId);
-        return res.status(204).send();
+        if (!env.cloudinaryCloudName || !env.cloudinaryApiKey || !env.cloudinaryApiSecret) {
+            return next({ status: 500, message: "Cloudinary is not configured" });
+        }
+        const { resourceType, courseId, kind, publicId, folder } = req.body || {};
+        if (!resourceType) {
+            return next({ status: 400, message: "resourceType is required" });
+        }
+        if (!["video", "image", "raw"].includes(resourceType)) {
+            return next({ status: 400, message: "Invalid resourceType" });
+        }
+        const resolvedFolder =
+            folder ||
+            (courseId && kind
+                ? `courses/${courseId}/${kind === "video"
+                    ? "videos"
+                    : kind === "material"
+                        ? "materials"
+                        : "thumbnails"}`
+                : "");
+        const signed = signUpload({
+            resourceType,
+            folder: buildFolder(resolvedFolder),
+            publicId
+        });
+        return res.json(signed);
+    } catch (error) {
+        return next(error);
+    }
+});
+
+router.delete("/admin/courses/:courseId/items/:itemId", async (req, res, next) => {
+    try {
+        const hard = req.query.hard === "true";
+        await deleteCourseItem({
+            courseId: req.params.courseId,
+            itemId: req.params.itemId,
+            hard
+        });
+        return res.json({ ok: true });
+    } catch (error) {
+        return next(error);
+    }
+});
+
+router.patch("/admin/courses/:courseId/items/reorder", async (req, res, next) => {
+    try {
+        const items = req.body?.items;
+        await reorderCourseItems(req.params.courseId, items);
+        return res.json({ ok: true });
+    } catch (error) {
+        return next(error);
+    }
+});
+
+router.get("/admin/courses/:courseId/items", async (req, res, next) => {
+    try {
+        const includeDeleted = req.query.includeDeleted !== "false";
+        const items = await listCourseItemsAdmin(req.params.courseId, { includeDeleted });
+        return res.json({
+            courseId: req.params.courseId,
+            items
+        });
     } catch (error) {
         return next(error);
     }

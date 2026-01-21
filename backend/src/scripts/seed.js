@@ -29,8 +29,10 @@ const seedAdmin = async () => {
 };
 
 const seedCourses = async () => {
+    const now = new Date().toISOString();
     const course = {
         courseId: "js-101",
+        slug: "javascript-fundamentals",
         title: "JavaScript Fundamentals",
         summary: "Learn the core syntax and patterns of modern JavaScript.",
         description: "From variables to async workflows with hands-on demos.",
@@ -40,8 +42,9 @@ const seedCourses = async () => {
         instructor: "Alex Chen",
         rating: 4.7,
         durationMinutes: 420,
-        updatedAt: new Date().toISOString(),
-        thumbnailUrl: "https://picsum.photos/seed/js-101/640/360",
+        createdAt: now,
+        updatedAt: now,
+        thumbnailUrl: "https://res.cloudinary.com/djpfddzh4/image/upload/v1768954284/main-sample.png",
         lectureCount: 2
     };
 
@@ -55,26 +58,41 @@ const seedCourses = async () => {
     const items = [
         {
             courseId: course.courseId,
-            sk: "item#100",
             itemId: crypto.randomUUID(),
             type: "video",
             title: "Intro to JavaScript",
             order: 100,
-            url: "https://example.com/videos/js-101/intro"
+            storage: {
+                provider: "cloudinary",
+                resourceType: "video",
+                publicId: "0_-_Introduction_qtov3c",
+                url: "https://res.cloudinary.com/djpfddzh4/video/upload/v1768958210/0_-_Introduction_qtov3c.mp4"
+            },
+            url: "https://res.cloudinary.com/djpfddzh4/video/upload/v1768958210/0_-_Introduction_qtov3c.mp4",
+            createdAt: now,
+            updatedAt: now,
+            deletedAt: null
         },
         {
             courseId: course.courseId,
-            sk: "item#200",
             itemId: crypto.randomUUID(),
             type: "material",
             title: "JS Fundamentals Guide",
             order: 200,
             materialType: "pdf",
-            url: "https://example.com/materials/js-101/guide.pdf"
+            storage: {
+                provider: "cloudinary",
+                resourceType: "raw",
+                publicId: "1-introduction_k3hzcb",
+                url: "https://res.cloudinary.com/demo/raw/upload/v1/js-101-guide.pdf"
+            },
+            url: "https://res.cloudinary.com/demo/raw/upload/v1/js-101-guide.pdf",
+            createdAt: now,
+            updatedAt: now,
+            deletedAt: null
         },
         {
             courseId: course.courseId,
-            sk: "item#300",
             itemId: crypto.randomUUID(),
             type: "quiz",
             title: "JS Basics Quiz",
@@ -85,9 +103,15 @@ const seedCourses = async () => {
                     choices: ["var", "loop", "echo"],
                     correctIndex: 0
                 }
-            ]
+            ],
+            createdAt: now,
+            updatedAt: now,
+            deletedAt: null
         }
-    ];
+    ].map((item) => ({
+        ...item,
+        sk: `item#${item.itemId}`
+    }));
 
     await Promise.all(
         items.map((item) =>

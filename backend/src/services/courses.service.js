@@ -4,31 +4,41 @@ import {
     GetCommand,
     PutCommand,
     QueryCommand,
-    ScanCommand
+    ScanCommand,
+    UpdateCommand
 } from "@aws-sdk/lib-dynamodb";
 import { docClient } from "../config/dynamodb.js";
 import { env } from "../config/env.js";
 import { listCoursesWithMeta } from "./courseService.js";
 import { slugify } from "../utils/slug.js";
+import { deleteItemsForCourse } from "./items.service.js";
 
-export const listCourses = async ({ search, page, pageSize }) => {
+export const listCourses = async ({ search, page, pageSize, includeDeleted = false }) => {
     const response = await docClient.send(
         new ScanCommand({
             TableName: env.coursesTable
         })
     );
-    const courses = response.Items || [];
+    const courses = (response.Items || []).filter(
+        (course) => includeDeleted || course.deletedAt == null
+    );
     return listCoursesWithMeta({ courses, search, page, pageSize });
 };
 
-export const getCourseById = async (courseId) => {
+export const getCourseById = async (courseId, { includeDeleted = false } = {}) => {
     const response = await docClient.send(
         new GetCommand({
             TableName: env.coursesTable,
             Key: { courseId }
         })
     );
-    return response.Item || null;
+    if (!response.Item) {
+        return null;
+    }
+    if (!includeDeleted && response.Item.deletedAt != null) {
+        return null;
+    }
+    return response.Item;
 };
 
 const slugExists = async (slug) => {
@@ -119,7 +129,7 @@ export const createCourse = async (payload) => {
 };
 
 export const updateCourse = async (courseId, updates) => {
-    const existing = await getCourseById(courseId);
+    const existing = await getCourseById(courseId, { includeDeleted: true });
     if (!existing) {
         const error = new Error("Course not found");
         error.status = 404;
@@ -143,16 +153,7 @@ export const updateCourse = async (courseId, updates) => {
     return course;
 };
 
-export const deleteCourse = async (courseId) => {
-    await docClient.send(
-        new DeleteCommand({
-            TableName: env.coursesTable,
-            Key: { courseId }
-        })
-    );
-};
-
-export const getCourseBySlug = async (slug) => {
+export const getCourseBySlug = async (slug, { includeDeleted = false } = {}) => {
     const normalized = slugify(slug || "");
     if (!normalized) {
         return null;
@@ -168,5 +169,50 @@ export const getCourseBySlug = async (slug) => {
             Limit: 1
         })
     );
-    return response.Items?.[0] || null;
+    const course = response.Items?.[0] || null;
+    if (!course) {
+        return null;
+    }
+    if (!includeDeleted && course.deletedAt != null) {
+        return null;
+    }
+    return course;
+};
+
+export const getCourseByIdentifier = async (identifier) => {
+    const byId = await getCourseById(identifier);
+    if (byId) {
+        return byId;
+    }
+    return getCourseBySlug(identifier);
+};
+
+export const deleteCourseById = async (courseId, { hard = false } = {}) => {
+    const course = await getCourseById(courseId, { includeDeleted: true });
+    if (!course) {
+        const error = new Error("Course not found");
+        error.status = 404;
+        throw error;
+    }
+    if (hard) {
+        await deleteItemsForCourse(courseId);
+        await docClient.send(
+            new DeleteCommand({
+                TableName: env.coursesTable,
+                Key: { courseId }
+            })
+        );
+        return;
+    }
+    await docClient.send(
+        new UpdateCommand({
+            TableName: env.coursesTable,
+            Key: { courseId },
+            UpdateExpression: "SET deletedAt = :deletedAt, updatedAt = :updatedAt",
+            ExpressionAttributeValues: {
+                ":deletedAt": new Date().toISOString(),
+                ":updatedAt": new Date().toISOString()
+            }
+        })
+    );
 };

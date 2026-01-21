@@ -108,6 +108,12 @@ Response:
 }
 ```
 
+### Course Detail (by slug or courseId)
+
+`GET /courses/by/:identifier`
+
+`identifier` can be a `courseId` or `slug`.
+
 ### Course Items
 
 `GET /courses/:courseId/items`
@@ -122,12 +128,49 @@ Response:
 {
   "courseId": "js-101",
   "items": [
-    { "itemId": "uuid", "type": "video", "title": "Intro", "order": 100 },
-    { "itemId": "uuid", "type": "material", "title": "Guide", "order": 200, "materialType": "pdf", "url": "https://..." },
-    { "itemId": "uuid", "type": "quiz", "title": "Basics Quiz", "order": 300, "questions": [ { "prompt": "...", "choices": ["a","b","c"], "correctIndex": 0 } ] }
+    {
+      "itemId": "uuid",
+      "type": "video",
+      "title": "Intro",
+      "order": 100,
+      "storage": {
+        "provider": "cloudinary",
+        "resourceType": "video",
+        "publicId": "courses/js-101/videos/intro",
+        "url": "https://..."
+      },
+      "url": "https://..."
+    },
+    {
+      "itemId": "uuid",
+      "type": "material",
+      "title": "Guide",
+      "order": 200,
+      "materialType": "pdf",
+      "storage": {
+        "provider": "cloudinary",
+        "resourceType": "raw",
+        "publicId": "courses/js-101/materials/guide",
+        "url": "https://..."
+      },
+      "url": "https://..."
+    },
+    {
+      "itemId": "uuid",
+      "type": "quiz",
+      "title": "Basics Quiz",
+      "order": 300,
+      "questions": [
+        { "prompt": "...", "choices": ["a", "b", "c"], "correctIndex": 0 }
+      ]
+    }
   ]
 }
 ```
+
+### Course Items (by slug or courseId)
+
+`GET /courses/by/:identifier/resources`
 
 ## Quizzes - Work In Progress
 
@@ -161,6 +204,17 @@ Response:
 All admin endpoints require:
 
 - `Authorization: Bearer <JWT>` (token must belong to an `admin` user)
+
+### List Courses (Admin)
+
+`GET /admin/courses?includeDeleted=true|false`
+
+Query params:
+
+- `includeDeleted` (optional, default `false`)
+- `search` (optional)
+- `page` (positive int, default `1`)
+- `pageSize` (positive int, default `6`, max `50`)
 
 ### Create Course
 
@@ -198,6 +252,10 @@ Body: any updatable course fields (title, summary, tags, etc.)
 
 `DELETE /admin/courses/:courseId`
 
+Query params:
+
+- `hard=true` for hard delete (default is soft delete)
+
 ### Create Item
 
 `POST /admin/courses/:courseId/items`
@@ -210,15 +268,26 @@ Headers:
 Body (minimum):
 
 ```json
-{ "type": "video", "title": "Intro", "order": 100 }
+{
+  "type": "video",
+  "title": "Intro",
+  "order": 100,
+  "storage": {
+    "provider": "cloudinary",
+    "resourceType": "video",
+    "publicId": "courses/js-101/videos/intro",
+    "url": "https://..."
+  }
+}
 ```
 
 Item type rules:
 
-- `type` must be `video` | `material` | `quiz`
-- if `material`: include `materialType` and `url`
-- if `video`: include `url`
+- `type` must be `video` | `material` | `quiz` | `image`
+- if `material`: include `materialType` (`pdf` or `zip`)
+- media items (`video`/`material`/`image`) require `storage` or legacy `url`
 - if `quiz`: include `questions` (array of `{ prompt, choices, correctIndex }`)
+- if `order` not provided, server will assign `max(order) + 100` (starting at `100`)
 
 ### Update Item
 
@@ -229,13 +298,35 @@ Headers:
 - `Content-Type: application/json`
 - `Authorization: Bearer <JWT>`
 
-### Delete Item
+### Delete Course Item (Soft/Hard)
 
-`DELETE /admin/items/:itemId`
+`DELETE /admin/courses/:courseId/items/:itemId?hard=true`
 
 Headers:
 
 - `Authorization: Bearer <JWT>`
+
+### Reorder Items
+
+`PATCH /admin/courses/:courseId/items/reorder`
+
+Body:
+
+```json
+{ "items": [ { "itemId": "uuid", "order": 100 }, { "itemId": "uuid2", "order": 200 } ] }
+```
+
+Response:
+
+```json
+{ "ok": true }
+```
+
+### List Course Items (Admin)
+
+`GET /admin/courses/:courseId/items?includeDeleted=true|false`
+
+Default: `includeDeleted=true`
 
 ## Error Format
 
@@ -250,9 +341,9 @@ All errors are returned as:
 ### Option A (Recommended): NoSQL Workbench
 
 1. Download and install **NoSQL Workbench for DynamoDB**
-2. Start DynamoDB Local from the Workbench UI
-3. Ensure it runs on port `8001`
-4. Configure `.env`:
+1. Start DynamoDB Local from the Workbench UI
+1. Ensure it runs on port `8001`
+1. Configure `.env`:
 
 ```bash
 DYNAMODB_ENDPOINT=http://localhost:8001
@@ -260,7 +351,7 @@ DYNAMODB_LOCAL=true
 AWS_REGION=us-east-1
 ```
 
-5. If tables already exist, simply start the API:
+1. If tables already exist, simply start the API:
 
 ```bash
 npm run dev
@@ -290,3 +381,62 @@ Note: no AWS account/keys are required when using DynamoDB Local.
 - `slug` is optional on create; if not provided, it is generated from `title`
 - `slug` is normalized to lowercase with `-` separators
 - `slug` must be unique (409 "Slug already exists")
+
+## Delete Semantics
+
+- Items:
+  - Soft delete (default): sets `deletedAt`
+  - Hard delete: `?hard=true` removes the record and attempts Cloudinary delete
+- Courses:
+  - Soft delete (default): sets `deletedAt`
+  - Hard delete: `?hard=true` removes the course and all items (best effort)
+
+## Admin Upload (Cloudinary) - Work In Progress
+
+Required env vars:
+
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+- `CLOUDINARY_FOLDER_PREFIX` (optional, default `codemy`)
+
+1. Sign upload (admin):
+
+`POST /admin/uploads/sign`
+
+Body:
+
+```json
+{ "resourceType": "video", "courseId": "js-101", "kind": "video" }
+```
+
+2. Frontend upload directly to Cloudinary:
+
+FormData fields:
+
+- `file`
+- `api_key`
+- `timestamp`
+- `signature`
+- `folder`
+- `public_id` (optional)
+
+3. Cloudinary response includes `public_id` + `secure_url` + `resource_type`
+
+4. Create item using returned metadata:
+
+`POST /admin/courses/:courseId/items`
+
+```json
+{
+  "type": "video",
+  "title": "Intro",
+  "order": 100,
+  "storage": {
+    "provider": "cloudinary",
+    "resourceType": "video",
+    "publicId": "courses/js-101/videos/intro",
+    "url": "https://..."
+  }
+}
+```
