@@ -1,23 +1,35 @@
-import { PutCommand } from "@aws-sdk/lib-dynamodb";
-import { docClient } from "../config/dynamodb.js";
-import { env } from "../config/env.js";
 import { getQuizById } from "./items.service.js";
+
+const isIntegerAnswer = (value) => Number.isInteger(value);
 
 const scoreAnswers = (questions, answers) => {
     let correctCount = 0;
-    questions.forEach((question, index) => {
+    const review = questions.map((question, index) => {
+        const choices = Array.isArray(question.choices) ? question.choices : [];
         const expected = question.correctIndex;
+        const expectedValid =
+            Number.isInteger(expected) && expected >= 0 && expected < choices.length;
         const actual = answers[index];
-        if (actual === expected) {
+        const actualValid =
+            isIntegerAnswer(actual) && actual >= 0 && actual < choices.length;
+        const selectedIndex = actualValid ? actual : null;
+        const correct = expectedValid && selectedIndex === expected;
+        if (correct) {
             correctCount += 1;
         }
+        return {
+            correct,
+            correctIndex: expectedValid ? expected : null,
+            selectedIndex
+        };
     });
     const total = questions.length;
     const scorePercent = total === 0 ? 0 : Math.round((correctCount / total) * 100);
     return {
         scorePercent,
         correctCount,
-        total
+        total,
+        review
     };
 };
 
@@ -29,24 +41,11 @@ export const attemptQuiz = async ({ quizId, userId, answers }) => {
         throw error;
     }
     const questions = Array.isArray(quiz.questions) ? quiz.questions : [];
+    if (!Array.isArray(answers) || !answers.every(isIntegerAnswer)) {
+        const error = new Error("Answers must be an array of integers");
+        error.status = 400;
+        throw error;
+    }
     const result = scoreAnswers(questions, answers);
-    const attempt = {
-        userId,
-        sk: `${quizId}#${Date.now()}`,
-        quizId,
-        courseId: quiz.courseId,
-        scorePercent: result.scorePercent,
-        correctCount: result.correctCount,
-        total: result.total,
-        createdAt: new Date().toISOString()
-    };
-
-    await docClient.send(
-        new PutCommand({
-            TableName: env.quizAttemptsTable,
-            Item: attempt
-        })
-    );
-
     return result;
 };
