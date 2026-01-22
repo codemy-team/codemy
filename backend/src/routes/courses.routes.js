@@ -10,6 +10,21 @@ import { parsePositiveInt } from "../utils/pagination.js";
 
 const router = Router();
 
+const sanitizeQuizForPublic = (item) => {
+    if (item.type !== "quiz") {
+        return item;
+    }
+    const questions = Array.isArray(item.questions)
+        ? item.questions.map(({ prompt, choices }) => ({ prompt, choices }))
+        : [];
+    return {
+        ...item,
+        questions
+    };
+};
+
+const sanitizeItemsForPublic = (items) => items.map(sanitizeQuizForPublic);
+
 router.get("/courses", async (req, res, next) => {
     try {
         const search = typeof req.query.search === "string" ? req.query.search : "";
@@ -43,9 +58,10 @@ router.get("/courses/by/:identifier/resources", async (req, res, next) => {
             return next({ status: 404, message: "Course not found" });
         }
         const items = await listCourseItems(course.courseId);
+        const sanitizedItems = sanitizeItemsForPublic(items);
         return res.json({
             courseId: course.courseId,
-            items
+            items: sanitizedItems
         });
     } catch (error) {
         return next(error);
@@ -85,27 +101,39 @@ router.get("/courses/:courseId/items", async (req, res, next) => {
         const items = await listCourseItems(req.params.courseId);
         return res.json({
             courseId: req.params.courseId,
-            items
+            items: sanitizeItemsForPublic(items)
         });
     } catch (error) {
         return next(error);
     }
 });
 
-router.get("/courses/:courseId/resources", async (req, res, next) => {
-    try {
-        const course = await getCourseById(req.params.courseId);
-        if (!course) {
-            return next({ status: 404, message: "Course not found" });
-        }
-        const items = await listCourseItems(req.params.courseId);
-        return res.json({
-            courseId: req.params.courseId,
-            items
-        });
-    } catch (error) {
-        return next(error);
-    }
-});
+// router.get("/courses/:courseId/resources", async (req, res, next) => {
+//     try {
+//         const course = await getCourseById(req.params.courseId);
+//         if (!course) {
+//             return next({ status: 404, message: "Course not found" });
+//         }
+//         const items = await listCourseItems(req.params.courseId);
+//         const sanitizedItems = items.map((item) => {
+//             if (item.type !== "quiz") {
+//                 return item;
+//             }
+//             const questions = Array.isArray(item.questions)
+//                 ? item.questions.map(({ prompt, choices }) => ({ prompt, choices }))
+//                 : [];
+//             return {
+//                 ...item,
+//                 questions
+//             };
+//         });
+//         return res.json({
+//             courseId: req.params.courseId,
+//             items: sanitizedItems
+//         });
+//     } catch (error) {
+//         return next(error);
+//     }
+// });
 
 export default router;

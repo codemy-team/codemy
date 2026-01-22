@@ -1,10 +1,9 @@
 import { Router } from "express";
-import { authenticate } from "../middleware/auth.js";
 import { attemptQuiz } from "../services/quizzes.service.js";
 
 const router = Router();
 
-router.post("/quizzes/:quizId/attempt", authenticate, async (req, res, next) => {
+router.post("/quizzes/:quizId/attempt", async (req, res, next) => {
     try {
         const { answers } = req.body || {};
         if (!Array.isArray(answers)) {
@@ -12,7 +11,6 @@ router.post("/quizzes/:quizId/attempt", authenticate, async (req, res, next) => 
         }
         const result = await attemptQuiz({
             quizId: req.params.quizId,
-            userId: req.user.userId,
             answers
         });
         return res.json(result);

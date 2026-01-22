@@ -43,7 +43,13 @@ export const listCourseItems = async (courseId) => {
     const items = await listCourseItemsRaw(courseId);
     return items
         .filter((item) => item.deletedAt == null)
-        .sort((a, b) => (a.order || 0) - (b.order || 0))
+        .sort((a, b) => {
+            const orderDiff = (a.order || 0) - (b.order || 0);
+            if (orderDiff !== 0) {
+                return orderDiff;
+            }
+            return (a.createdAt || "").localeCompare(b.createdAt || "");
+        })
         .map(mapCourseItem);
 };
 
@@ -51,7 +57,13 @@ export const listCourseItemsAdmin = async (courseId, { includeDeleted = true } =
     const items = await listCourseItemsRaw(courseId);
     return items
         .filter((item) => includeDeleted || item.deletedAt == null)
-        .sort((a, b) => (a.order || 0) - (b.order || 0))
+        .sort((a, b) => {
+            const orderDiff = (a.order || 0) - (b.order || 0);
+            if (orderDiff !== 0) {
+                return orderDiff;
+            }
+            return (a.createdAt || "").localeCompare(b.createdAt || "");
+        })
         .map(mapCourseItem);
 };
 
@@ -65,11 +77,14 @@ const normalizeOrderValue = (value) => {
 
 const resolveOrder = async (courseId, incomingOrder) => {
     const explicitOrder = normalizeOrderValue(incomingOrder);
-    if (explicitOrder) {
-        return explicitOrder;
-    }
     const items = await listCourseItemsRaw(courseId);
     const maxOrder = items.reduce((max, item) => Math.max(max, item.order || 0), 0);
+    if (explicitOrder) {
+        const hasDuplicate = items.some((item) => item.order === explicitOrder);
+        if (!hasDuplicate) {
+            return explicitOrder;
+        }
+    }
     return maxOrder ? maxOrder + 100 : 100;
 };
 
