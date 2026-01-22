@@ -1,23 +1,21 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
-import Footer from "./components/Footer";
 import Home from "./pages/Home";
 import CourseDetail from "./pages/CourseDetail";
 import VideoPlayer from "./pages/VideoPlayer";
+import Quiz from "./pages/Quiz";
 
 const App = () => {
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="min-h-screen bg-gray-50">
         <Navbar />
-        <main className="flex-grow">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/course/:courseId" element={<CourseDetail />} />
-            <Route path="/video/:videoId" element={<VideoPlayer />} />
-          </Routes>
-        </main>
-        <Footer />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/course/:courseId" element={<CourseDetail />} />
+          <Route path="/video/:videoId" element={<VideoPlayer />} />
+          <Route path="/quiz/:quizId" element={<Quiz />} />
+        </Routes>
       </div>
     </BrowserRouter>
   );
