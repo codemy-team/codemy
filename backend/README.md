@@ -168,24 +168,27 @@ Response:
 }
 ```
 
-### Course Items (by slug or courseId)
+Note: for quiz items, `correctIndex` is not returned in public items/resources.
+
+### Course Resources (by slug or courseId)
 
 `GET /courses/by/:identifier/resources`
 
-## Quizzes - Work In Progress
+Note: for quiz items, `correctIndex` is not returned in public resources.
 
-### Attempt Quiz (Auth: user)
+## Quizzes
+
+### Attempt Quiz (For public)
 
 `POST /quizzes/:quizId/attempt`
 
 Headers:
 
 - `Content-Type: application/json`
-- `Authorization: Bearer <JWT>`
 
 Path params:
 
-- `quizId` (required)
+- `quizId` (required, using `itemId`)
 
 Request:
 
@@ -196,7 +199,15 @@ Request:
 Response:
 
 ```json
-{ "scorePercent": 67, "correctCount": 2, "total": 3 }
+{
+  "scorePercent": 67,
+  "correctCount": 2,
+  "total": 3,
+  "review": [
+    { "correct": true, "correctIndex": 0, "selectedIndex": 0 },
+    { "correct": false, "correctIndex": 2, "selectedIndex": null }
+  ]
+}
 ```
 
 ## Admin (Auth: admin)
@@ -287,7 +298,15 @@ Item type rules:
 - if `material`: include `materialType` (`pdf` or `zip`)
 - media items (`video`/`material`/`image`) require `storage` or legacy `url`
 - if `quiz`: include `questions` (array of `{ prompt, choices, correctIndex }`)
+
+  ```json
+  {
+    "answers": [1,1,0]
+  }
+  ```
+
 - if `order` not provided, server will assign `max(order) + 100` (starting at `100`)
+- if `order` conflicts with an existing item, server will auto-assign `max(order) + 100`
 
 ### Update Item
 
@@ -327,6 +346,10 @@ Response:
 `GET /admin/courses/:courseId/items?includeDeleted=true|false`
 
 Default: `includeDeleted=true`
+
+Optional filter:
+
+- `type=quiz|video|material|image|raw`
 
 ## Error Format
 

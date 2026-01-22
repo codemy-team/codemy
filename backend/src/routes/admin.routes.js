@@ -167,7 +167,14 @@ router.patch("/admin/courses/:courseId/items/reorder", async (req, res, next) =>
 router.get("/admin/courses/:courseId/items", async (req, res, next) => {
     try {
         const includeDeleted = req.query.includeDeleted !== "false";
-        const items = await listCourseItemsAdmin(req.params.courseId, { includeDeleted });
+        const type = req.query.type;
+        if (type && !["quiz", "video", "material", "image", "raw"].includes(type)) {
+            return next({ status: 400, message: "Invalid type" });
+        }
+        let items = await listCourseItemsAdmin(req.params.courseId, { includeDeleted });
+        if (type) {
+            items = items.filter((item) => item.type === type);
+        }
         return res.json({
             courseId: req.params.courseId,
             items
