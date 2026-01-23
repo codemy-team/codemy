@@ -4,14 +4,42 @@ React-based frontend for the Codemy online learning platform.
 
 ## Tech Stack
 
-| Technology       | Purpose                           |
-| ---------------- | --------------------------------- |
-| React 18         | UI Framework                      |
-| React Router DOM | Client-side Routing               |
-| Tailwind CSS     | Styling                           |
-| Vite             | Build Tool                        |
-| Groq API         | AI Content Generation (LLaMA 3.3) |
-| Cloudinary       | Media Storage (Video/PDF)         |
+| Technology       | Version | Purpose                           |
+| ---------------- | ------- | --------------------------------- |
+| React            | 19      | UI Framework                      |
+| TypeScript       | 5.7     | Programming Language              |
+| React Router DOM | 7       | Client-side Routing               |
+| Tailwind CSS     | 4       | Styling                           |
+| Vite             | 7       | Build Tool                        |
+| Groq API         | --      | AI Content Generation (LLaMA 3.3) |
+| Cloudinary       | --      | Media Storage (Video/PDF)         |
+
+## Flow
+
+┌─────────────────────────────────────────────────────────────┐
+│ User │
+│ ▼ │
+│ ┌─────────────────────────────────────┐ │
+│ │ Frontend (React 19 + TypeScript) │ │
+│ │ Vite + Tailwind CSS │ │
+│ │ localhost:5173 │ │
+│ └─────────────────────────────────────┘ │
+│ │ │ │ │
+│ API Calls│ Direct │ │AI Generation │
+│ & Save │ Upload │ │ │
+│ ▼ ▼ ▼ │
+│ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ │
+│ │ Backend │ │ Cloudinary │ │ Groq API │ │
+│ │ (Express 5) │ │ (Video/PDF) │ │ (LLaMA 3.3) │ │
+│ │ :8000 │ │ │ │ │ │
+│ └──────────────┘ └──────────────┘ └──────────────┘ │
+│ │ │
+│ ▼ │
+│ ┌──────────────┐ │
+│ │ DynamoDB │ │
+│ │ (Database) │ │
+│ └──────────────┘ │
+└─────────────────────────────────────────────────────────────┘
 
 ## Features
 
@@ -21,7 +49,7 @@ React-based frontend for the Codemy online learning platform.
 - 🔍 Search courses by title, instructor, category
 - 📺 Watch course videos (Cloudinary-hosted)
 - 📄 View PDF materials inline
-- 📝 Take quizzes and get instant scores
+- 📝 Take quizzes with instant feedback (green for correct, red for incorrect) and detailed scores
 - 📇 Study with interactive flashcards
 
 ### Admin Features (Login Required)
@@ -67,9 +95,9 @@ Codemy uses **Groq API** with the **LLaMA 3.3 70B** model to automatically gener
 
 ### Groq API Configuration
 
-The AI service is located in `src/services/gemini.js`:
+The AI service is located in `src/services/gemini.ts`:
 
-```javascript
+```typescript
 // API endpoint
 https://api.groq.com/openai/v1/chat/completions
 
@@ -80,7 +108,7 @@ llama-3.3-70b-versatile
 0.7 (balanced creativity)
 ```
 
-> **Note**: To use your own Groq API key, update the `GROQ_API_KEY` in `src/services/gemini.js`. Get your free API key at [console.groq.com](https://console.groq.com)
+> **Note**: To use your own Groq API key, update the `GROQ_API_KEY` in `src/services/gemini.ts`. Get your free API key at [console.groq.com](https://console.groq.com)
 
 ## Getting Started
 
@@ -109,34 +137,46 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ```
 src/
-├── components/          # Reusable UI components
-│   ├── Navbar.jsx       # Navigation bar with search
-│   ├── Hero.jsx         # Homepage banner
-│   ├── CourseCard.jsx   # Course card component
-│   ├── Footer.jsx       # Footer component
-│   └── Modal.jsx        # Reusable modal component
+├── components/                # Reusable UI components
+│   ├── Navbar.tsx             # Navigation bar with search
+│   ├── Hero.tsx               # Homepage banner
+│   ├── CourseCard.tsx         # Course card component
+│   ├── Footer.tsx             # Footer component
+│   ├── Modal.tsx              # Reusable modal component
+│   └── admin/                 # Admin-specific components
+│       ├── AIModal.tsx        # AI generation modal
+│       ├── ActiveCoursesSection.tsx  # Active courses display
+│       ├── CourseCard.tsx     # Admin course card
+│       ├── CourseForm.tsx     # Course creation/editing form
+│       ├── CourseItem.tsx     # Course content item display
+│       ├── DeleteItemModal.tsx     # Delete item confirmation
+│       ├── DeleteModal.tsx    # Course deletion confirmation
+│       ├── SuccessMessage.tsx # Success notification
+│       ├── TrashSection.tsx   # Deleted courses display
+│       ├── UploadModal.tsx    # Video/file upload interface
+│       └── constants.ts       # Admin component constants
 │
 ├── pages/               # Page components
-│   ├── Home.jsx         # Homepage with course listing
-│   ├── CourseDetail.jsx # Course details + content list
-│   ├── VideoPlayer.jsx  # Video player / PDF viewer
-│   ├── Quiz.jsx         # Quiz taking page
-│   ├── Flashcard.jsx    # Flashcard study page
-│   ├── Login.jsx        # Admin login page
-│   └── AdminCMS.jsx     # Admin dashboard with AI generation
+│   ├── Home.tsx         # Homepage with course listing
+│   ├── CourseDetail.tsx # Course details + content list
+│   ├── VideoPlayer.tsx  # Video player / PDF viewer
+│   ├── Quiz.tsx         # Quiz with color-coded feedback
+│   ├── Flashcard.tsx    # Flashcard study page
+│   ├── Login.tsx        # Admin login page
+│   └── AdminCMS.tsx     # Admin dashboard with AI generation
 │
 ├── services/            # API service functions
-│   ├── api.js           # Backend API calls
-│   └── gemini.js        # Groq AI API (Quiz & Flashcard generation)
+│   ├── api.ts           # Backend API calls
+│   └── gemini.ts        # Groq AI API (Quiz & Flashcard generation)
 │
-├── data/                # Static data (legacy)
-│   └── courses.js       # Mock data (not used)
+├── data/                # Static data
+│   └── courses.ts       # Type definitions
 │
-├── types/               # TypeScript types (future)
-│   └── index.js
+├── types/               # TypeScript type definitions
+│   └── index.ts         # Shared interfaces and types
 │
-├── App.jsx              # Root component with routing
-├── main.jsx             # Entry point
+├── App.tsx              # Root component with routing
+├── main.tsx             # Application entry point
 └── index.css            # Global styles (Tailwind)
 ```
 
@@ -249,8 +289,8 @@ For development/testing:
 | Member      | Role                 |
 | ----------- | -------------------- |
 | Weiren      | Frontend Development |
-| Fangqin     | Unit Testing         |
 | Chunjingwen | Backend Development  |
+| Fangqin     | Unit Testing         |
 
 ## Related
 

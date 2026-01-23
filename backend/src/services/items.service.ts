@@ -9,22 +9,27 @@ import {
 import { cloudinary } from "../config/cloudinary.js";
 import { docClient } from "../config/dynamodb.js";
 import { env } from "../config/env.js";
+import { Item, ItemPayload, Storage, QuizItem } from "../types/index.js";
 
-const mapCourseItem = (item) => {
+interface CustomError extends Error {
+  status?: number;
+}
+
+const mapCourseItem = (item: any): Item | null => {
   if (!item) {
     return null;
   }
   const { pk, sk, questions, flashcards, ...rest } = item;
   if (item.type === "quiz") {
-    return { ...rest, questions };
+    return { ...rest, questions } as Item;
   }
   if (item.type === "flashcard") {
-    return { ...rest, flashcards };
+    return { ...rest, flashcards } as Item;
   }
-  return rest;
+  return rest as Item;
 };
 
-const listCourseItemsRaw = async (courseId) => {
+const listCourseItemsRaw = async (courseId: string): Promise<any[]> => {
   const response = await docClient.send(
     new QueryCommand({
       TableName: env.itemsTable,
@@ -38,12 +43,12 @@ const listCourseItemsRaw = async (courseId) => {
         ":prefix": "item#",
       },
       ScanIndexForward: true,
-    })
+    }),
   );
   return response.Items || [];
 };
 
-export const listCourseItems = async (courseId) => {
+export const listCourseItems = async (courseId: string): Promise<Item[]> => {
   const items = await listCourseItemsRaw(courseId);
   return items
     .filter((item) => item.deletedAt == null)
@@ -54,13 +59,18 @@ export const listCourseItems = async (courseId) => {
       }
       return (a.createdAt || "").localeCompare(b.createdAt || "");
     })
-    .map(mapCourseItem);
+    .map(mapCourseItem)
+    .filter((item): item is Item => item !== null);
 };
 
+interface ListItemsAdminOptions {
+  includeDeleted?: boolean;
+}
+
 export const listCourseItemsAdmin = async (
-  courseId,
-  { includeDeleted = true } = {}
-) => {
+  courseId: string,
+  { includeDeleted = true }: ListItemsAdminOptions = {},
+): Promise<Item[]> => {
   const items = await listCourseItemsRaw(courseId);
   return items
     .filter((item) => includeDeleted || item.deletedAt == null)
@@ -71,23 +81,29 @@ export const listCourseItemsAdmin = async (
       }
       return (a.createdAt || "").localeCompare(b.createdAt || "");
     })
-    .map(mapCourseItem);
+    .map(mapCourseItem)
+    .filter((item): item is Item => item !== null);
 };
 
-const normalizeOrderValue = (value) => {
-  const parsed = Number.parseInt(value, 10);
+const normalizeOrderValue = (
+  value: number | string | undefined,
+): number | null => {
+  const parsed = Number.parseInt(String(value), 10);
   if (!Number.isInteger(parsed) || parsed <= 0) {
     return null;
   }
   return parsed;
 };
 
-const resolveOrder = async (courseId, incomingOrder) => {
+const resolveOrder = async (
+  courseId: string,
+  incomingOrder?: number | string,
+): Promise<number> => {
   const explicitOrder = normalizeOrderValue(incomingOrder);
   const items = await listCourseItemsRaw(courseId);
   const maxOrder = items.reduce(
     (max, item) => Math.max(max, item.order || 0),
-    0
+    0,
   );
   if (explicitOrder) {
     const hasDuplicate = items.some((item) => item.order === explicitOrder);
@@ -98,20 +114,22 @@ const resolveOrder = async (courseId, incomingOrder) => {
   return maxOrder ? maxOrder + 100 : 100;
 };
 
-const validateItemPayload = (payload) => {
+const validateItemPayload = (payload: ItemPayload): void => {
   const type = payload.type;
   if (!["video", "material", "quiz", "image", "flashcard"].includes(type)) {
-    const error = new Error("Invalid item type");
+    const error: CustomError = new Error("Invalid item type");
     error.status = 400;
     throw error;
   }
   if (!payload.title) {
-    const error = new Error("Title is required");
+    const error: CustomError = new Error("Title is required");
     error.status = 400;
     throw error;
   }
   if (type === "material" && !payload.materialType) {
-    const error = new Error("materialType is required for material items");
+    const error: CustomError = new Error(
+      "materialType is required for material items",
+    );
     error.status = 400;
     throw error;
   }
@@ -120,13 +138,13 @@ const validateItemPayload = (payload) => {
     payload.questions &&
     !Array.isArray(payload.questions)
   ) {
-    const error = new Error("questions must be an array");
+    const error: CustomError = new Error("questions must be an array");
     error.status = 400;
     throw error;
   }
 };
 
-const normalizeStorage = (payload) => {
+const normalizeStorage = (payload: ItemPayload): Storage | null => {
   if (payload.storage) {
     return payload.storage;
   }
@@ -137,19 +155,27 @@ const normalizeStorage = (payload) => {
   return null;
 };
 
-const ensureStorage = (type, storage, url) => {
+const ensureStorage = (
+  type: string,
+  storage: Storage | null,
+  url?: string,
+): Storage | null => {
   if (type === "quiz" || type === "flashcard") {
     return null;
   }
   if (storage) {
     const { provider, resourceType, publicId, url: storageUrl } = storage;
     if (!provider || !resourceType || !publicId || !storageUrl) {
-      const error = new Error("storage is missing required fields");
+      const error: CustomError = new Error(
+        "storage is missing required fields",
+      );
       error.status = 400;
       throw error;
     }
     if (provider !== "cloudinary") {
-      const error = new Error("storage provider must be cloudinary");
+      const error: CustomError = new Error(
+        "storage provider must be cloudinary",
+      );
       error.status = 400;
       throw error;
     }
@@ -158,12 +184,15 @@ const ensureStorage = (type, storage, url) => {
   if (url) {
     return null;
   }
-  const error = new Error("storage is required for media items");
+  const error: CustomError = new Error("storage is required for media items");
   error.status = 400;
   throw error;
 };
 
-export const createCourseItem = async (courseId, payload) => {
+export const createCourseItem = async (
+  courseId: string,
+  payload: ItemPayload,
+): Promise<Item> => {
   validateItemPayload(payload);
   const itemId = payload.itemId || crypto.randomUUID();
   const order = await resolveOrder(courseId, payload.order);
@@ -172,7 +201,7 @@ export const createCourseItem = async (courseId, payload) => {
   const storage = normalizeStorage(payload);
   const normalizedStorage = ensureStorage(payload.type, storage, payload.url);
 
-  const item = {
+  const item: any = {
     courseId,
     sk,
     itemId,
@@ -208,13 +237,13 @@ export const createCourseItem = async (courseId, payload) => {
       TableName: env.itemsTable,
       Item: item,
       ConditionExpression: "attribute_not_exists(sk)",
-    })
+    }),
   );
 
-  return mapCourseItem(item);
+  return mapCourseItem(item) as Item;
 };
 
-const findItemById = async (itemId) => {
+const findItemById = async (itemId: string): Promise<any | null> => {
   const response = await docClient.send(
     new ScanCommand({
       TableName: env.itemsTable,
@@ -222,20 +251,26 @@ const findItemById = async (itemId) => {
       ExpressionAttributeValues: {
         ":itemId": itemId,
       },
-    })
+    }),
   );
   return response.Items?.[0] || null;
 };
 
-const findItemByCourseAndId = async (courseId, itemId) => {
+const findItemByCourseAndId = async (
+  courseId: string,
+  itemId: string,
+): Promise<any | null> => {
   const items = await listCourseItemsRaw(courseId);
   return items.find((item) => item.itemId === itemId) || null;
 };
 
-export const updateItemById = async (itemId, updates) => {
+export const updateItemById = async (
+  itemId: string,
+  updates: Partial<ItemPayload>,
+): Promise<Item> => {
   const item = await findItemById(itemId);
   if (!item) {
-    const error = new Error("Item not found");
+    const error: CustomError = new Error("Item not found");
     error.status = 404;
     throw error;
   }
@@ -253,16 +288,26 @@ export const updateItemById = async (itemId, updates) => {
     new PutCommand({
       TableName: env.itemsTable,
       Item: updated,
-    })
+    }),
   );
 
-  return mapCourseItem(updated);
+  return mapCourseItem(updated) as Item;
 };
 
-export const deleteCourseItem = async ({ courseId, itemId, hard = false }) => {
+interface DeleteItemOptions {
+  courseId: string;
+  itemId: string;
+  hard?: boolean;
+}
+
+export const deleteCourseItem = async ({
+  courseId,
+  itemId,
+  hard = false,
+}: DeleteItemOptions): Promise<void> => {
   const item = await findItemByCourseAndId(courseId, itemId);
   if (!item) {
-    const error = new Error("Item not found");
+    const error: CustomError = new Error("Item not found");
     error.status = 404;
     throw error;
   }
@@ -282,7 +327,7 @@ export const deleteCourseItem = async ({ courseId, itemId, hard = false }) => {
       new DeleteCommand({
         TableName: env.itemsTable,
         Key: { courseId, sk: item.sk },
-      })
+      }),
     );
     return;
   }
@@ -296,13 +341,21 @@ export const deleteCourseItem = async ({ courseId, itemId, hard = false }) => {
         ":deletedAt": new Date().toISOString(),
         ":updatedAt": new Date().toISOString(),
       },
-    })
+    }),
   );
 };
 
-export const reorderCourseItems = async (courseId, updates) => {
+interface ReorderUpdate {
+  itemId: string;
+  order: number | string;
+}
+
+export const reorderCourseItems = async (
+  courseId: string,
+  updates: ReorderUpdate[],
+): Promise<void> => {
   if (!Array.isArray(updates) || updates.length === 0) {
-    const error = new Error("items is required");
+    const error: CustomError = new Error("items is required");
     error.status = 400;
     throw error;
   }
@@ -310,12 +363,16 @@ export const reorderCourseItems = async (courseId, updates) => {
   const itemMap = new Map(items.map((item) => [item.itemId, item]));
   for (const update of updates) {
     if (!update.itemId || !itemMap.has(update.itemId)) {
-      const error = new Error("All itemIds must belong to the course");
+      const error: CustomError = new Error(
+        "All itemIds must belong to the course",
+      );
       error.status = 400;
       throw error;
     }
     if (normalizeOrderValue(update.order) == null) {
-      const error = new Error("Each item must have a positive order");
+      const error: CustomError = new Error(
+        "Each item must have a positive order",
+      );
       error.status = 400;
       throw error;
     }
@@ -326,7 +383,7 @@ export const reorderCourseItems = async (courseId, updates) => {
       docClient.send(
         new UpdateCommand({
           TableName: env.itemsTable,
-          Key: { courseId, sk: itemMap.get(update.itemId).sk },
+          Key: { courseId, sk: itemMap.get(update.itemId)!.sk },
           UpdateExpression: "SET #order = :order, updatedAt = :updatedAt",
           ExpressionAttributeNames: {
             "#order": "order",
@@ -335,13 +392,13 @@ export const reorderCourseItems = async (courseId, updates) => {
             ":order": normalizeOrderValue(update.order),
             ":updatedAt": new Date().toISOString(),
           },
-        })
-      )
-    )
+        }),
+      ),
+    ),
   );
 };
 
-export const deleteItemsForCourse = async (courseId) => {
+export const deleteItemsForCourse = async (courseId: string): Promise<void> => {
   const items = await listCourseItemsRaw(courseId);
   await Promise.all(
     items.map((item) =>
@@ -349,15 +406,15 @@ export const deleteItemsForCourse = async (courseId) => {
         courseId,
         itemId: item.itemId,
         hard: true,
-      })
-    )
+      }),
+    ),
   );
 };
 
-export const getQuizById = async (quizId) => {
+export const getQuizById = async (quizId: string): Promise<QuizItem | null> => {
   const item = await findItemById(quizId);
   if (!item || item.type !== "quiz" || item.deletedAt != null) {
     return null;
   }
-  return item;
+  return item as QuizItem;
 };

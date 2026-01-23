@@ -2,12 +2,14 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "",
-  "main": "src/server.js",
+  "main": "dist/server.js",
   "scripts": {
-    "dev": "nodemon src/server.js",
-    "start": "node src/server.js",
-    "db:create": "node src/scripts/createTables.js",
-    "seed": "node src/scripts/seed.js"
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "build": "tsc",
+    "db:create": "tsx src/scripts/createTables.ts",
+    "seed": "tsx src/scripts/seed.ts",
+    "type-check": "tsc --noEmit"
   },
   "type": "module",
   "keywords": [],
@@ -24,6 +26,14 @@
     "jsonwebtoken": "^9.0.3"
   },
   "devDependencies": {
-    "nodemon": "^3.1.11"
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^25.0.10",
+    "nodemon": "^3.1.11",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   }
 }

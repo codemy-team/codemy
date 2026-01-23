@@ -1,10 +1,16 @@
+import type { QuizQuestion, FlashCard } from "../types";
+
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 
 if (!GROQ_API_KEY) {
   console.warn("VITE_GROQ_API_KEY is not set in .env file");
 }
 
-export const generateQuiz = async (courseTitle, level, numQuestions = 5) => {
+export const generateQuiz = async (
+  courseTitle: string,
+  level: string,
+  numQuestions = 5,
+): Promise<QuizQuestion[]> => {
   const prompt = `Generate ${numQuestions} multiple choice quiz questions for a course titled "${courseTitle}" at ${level} level.
 
 Return ONLY a valid JSON array with this exact format, no other text:
@@ -29,7 +35,7 @@ Return ONLY a valid JSON array with this exact format, no other text:
         messages: [{ role: "user", content: prompt }],
         temperature: 0.7,
       }),
-    }
+    },
   );
 
   if (!response.ok) {
@@ -46,7 +52,11 @@ Return ONLY a valid JSON array with this exact format, no other text:
   return JSON.parse(jsonMatch[0]);
 };
 
-export const generateFlashcards = async (courseTitle, level, numCards = 10) => {
+export const generateFlashcards = async (
+  courseTitle: string,
+  level: string,
+  numCards = 10,
+): Promise<FlashCard[]> => {
   const prompt = `Generate ${numCards} flashcards for a course titled "${courseTitle}" at ${level} level.
 
 Return ONLY a valid JSON array with this exact format, no other text:
@@ -70,7 +80,7 @@ Return ONLY a valid JSON array with this exact format, no other text:
         messages: [{ role: "user", content: prompt }],
         temperature: 0.7,
       }),
-    }
+    },
   );
 
   if (!response.ok) {
