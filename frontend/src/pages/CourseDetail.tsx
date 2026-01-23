@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getCourse, getCourseItems } from "../services/api";
+import type { Course, CourseItem } from "../types";
 
 const CourseDetail = () => {
-  const { courseId } = useParams();
-  const [course, setCourse] = useState(null);
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { courseId } = useParams<{ courseId: string }>();
+  const [course, setCourse] = useState<Course | null>(null);
+  const [items, setItems] = useState<CourseItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -36,10 +37,6 @@ const CourseDetail = () => {
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-6">
-      <Link to="/" className="text-blue-500 hover:underline mb-6 block">
-        ← Back to Courses
-      </Link>
-
       <h1 className="text-3xl font-bold mb-4">{course.title}</h1>
       <p className="text-gray-600 mb-2">{course.instructor}</p>
       <p className="text-gray-500 text-sm mb-4">
@@ -77,10 +74,10 @@ const CourseDetail = () => {
               const flashcards =
                 item.type === "flashcard"
                   ? item.flashcards
-                  : item.questions.map((q) => ({
+                  : item.questions?.map((q) => ({
                       front: q.prompt,
                       back: q.choices[0],
-                    }));
+                    })) || [];
               toPath = `/flashcard/${item.itemId}`;
               linkState = { flashcards, title: item.title };
               icon = "📇";

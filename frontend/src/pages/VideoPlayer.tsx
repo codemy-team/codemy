@@ -1,16 +1,20 @@
-import { useLocation, Link } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const VideoPlayer = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { videoUrl, title, pdfUrl, isPdf } = location.state || {};
 
   // Handle no content case
   if (!videoUrl && !pdfUrl) {
     return (
       <div className="max-w-5xl mx-auto py-8 px-6">
-        <Link to="/" className="text-blue-500 hover:underline mb-6 block">
-          ← Back to Courses
-        </Link>
+        <button
+          onClick={() => navigate(-1)}
+          className="text-blue-500 hover:underline mb-6 block"
+        >
+          ← Back to Course
+        </button>
         <p>Content not found</p>
       </div>
     );
@@ -20,9 +24,12 @@ const VideoPlayer = () => {
   if (isPdf && pdfUrl) {
     return (
       <div className="max-w-5xl mx-auto py-8 px-6">
-        <Link to="/" className="text-blue-500 hover:underline mb-6 block">
-          ← Back to Courses
-        </Link>
+        <button
+          onClick={() => navigate(-1)}
+          className="text-blue-500 hover:underline mb-6 block"
+        >
+          ← Back to Course
+        </button>
 
         <h1 className="text-2xl font-bold mb-4">{title}</h1>
 
@@ -70,9 +77,12 @@ const VideoPlayer = () => {
   // Render Video player
   return (
     <div className="max-w-5xl mx-auto py-8 px-6">
-      <Link to="/" className="text-blue-500 hover:underline mb-6 block">
-        ← Back to Courses
-      </Link>
+      <button
+        onClick={() => navigate(-1)}
+        className="text-blue-500 hover:underline mb-6 block"
+      >
+        ← Back to Course
+      </button>
 
       <h1 className="text-2xl font-bold mb-4">{title}</h1>
 

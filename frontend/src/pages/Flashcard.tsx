@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { useLocation, Link } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const Flashcard = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { flashcards, title } = location.state || {};
   const [currentIndex, setCurrentIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -10,9 +11,12 @@ const Flashcard = () => {
   if (!flashcards || flashcards.length === 0) {
     return (
       <div className="max-w-3xl mx-auto py-8 px-6">
-        <Link to="/" className="text-blue-500 hover:underline mb-6 block">
-          ← Back to Courses
-        </Link>
+        <button
+          onClick={() => navigate(-1)}
+          className="text-blue-500 hover:underline mb-6 block"
+        >
+          ← Back to Course
+        </button>
         <p>No flashcards found</p>
       </div>
     );
@@ -28,15 +32,18 @@ const Flashcard = () => {
   const prevCard = () => {
     setFlipped(false);
     setCurrentIndex(
-      (prev) => (prev - 1 + flashcards.length) % flashcards.length
+      (prev) => (prev - 1 + flashcards.length) % flashcards.length,
     );
   };
 
   return (
     <div className="max-w-3xl mx-auto py-8 px-6">
-      <Link to="/" className="text-blue-500 hover:underline mb-6 block">
-        ← Back to Courses
-      </Link>
+      <button
+        onClick={() => navigate(-1)}
+        className="text-blue-500 hover:underline mb-6 block"
+      >
+        ← Back to Course
+      </button>
 
       <h1 className="text-2xl font-bold mb-2">{title}</h1>
       <p className="text-gray-500 mb-8">
