@@ -5,6 +5,7 @@ import Home from "./pages/Home";
 import CourseDetail from "./pages/CourseDetail";
 import VideoPlayer from "./pages/VideoPlayer";
 import Quiz from "./pages/Quiz";
+import Flashcard from "./pages/Flashcard";
 import Login from "./pages/Login";
 import AdminCMS from "./pages/AdminCMS";
 
@@ -19,6 +20,7 @@ const App = () => {
             <Route path="/course/:courseId" element={<CourseDetail />} />
             <Route path="/video/:videoId" element={<VideoPlayer />} />
             <Route path="/quiz/:quizId" element={<Quiz />} />
+            <Route path="/flashcard/:id" element={<Flashcard />} />
             <Route path="/login" element={<Login />} />
             <Route path="/admin" element={<AdminCMS />} />
           </Routes>
