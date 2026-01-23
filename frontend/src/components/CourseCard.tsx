@@ -1,10 +1,15 @@
 import { Link } from "react-router-dom";
+import type { Course } from "../types";
 
-const CourseCard = ({ course }) => {
+interface CourseCardProps {
+  course: Course;
+}
+
+const CourseCard = ({ course }: CourseCardProps) => {
   return (
     <Link to={`/course/${course.courseId}`}>
       <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow h-72 flex flex-col">
-        {/* 固定高度的图片区域 */}
+        {/* Fixed height image area */}
         <div className="h-40 bg-gradient-to-br from-purple-500 to-blue-500 flex-shrink-0">
           {course.thumbnailUrl ? (
             <img
@@ -37,7 +42,7 @@ const CourseCard = ({ course }) => {
           )}
         </div>
 
-        {/* 固定高度的内容区域 */}
+        {/* Fixed height content area */}
         <div className="p-4 flex-grow flex flex-col">
           <h3 className="font-bold text-lg mb-2 line-clamp-2">
             {course.title}

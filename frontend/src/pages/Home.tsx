@@ -3,10 +3,11 @@ import { useSearchParams } from "react-router-dom";
 import Hero from "../components/Hero";
 import CourseCard from "../components/CourseCard";
 import { getCourses } from "../services/api";
+import type { Course } from "../types";
 
 const Home = () => {
-  const [courses, setCourses] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get("search") || "";
 

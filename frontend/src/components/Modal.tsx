@@ -1,3 +1,14 @@
+interface ModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  type?: "danger" | "success";
+}
+
 const Modal = ({
   isOpen,
   onClose,
@@ -7,7 +18,7 @@ const Modal = ({
   confirmText = "Confirm",
   cancelText = "Cancel",
   type = "danger",
-}) => {
+}: ModalProps) => {
   if (!isOpen) return null;
 
   const confirmButtonClass =
