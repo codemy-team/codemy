@@ -15,6 +15,9 @@ dist-ssr
 # Test coverage
 coverage
 .nyc_output
+*.txt
+test_output.txt
+output.txt
 
 # Editor directories and files
 .vscode/*
